@@ -9,8 +9,8 @@ from datetime import date
 import pickle
 from config import client_id, redirect_uri
 
-import json 
-import os 
+import json
+import os
 import re
 
 def get_front_date(date_delta):
@@ -50,9 +50,9 @@ spread_ratio_threshold = 0.7      # front expiration ask-bid / mark  (should be 
 OTM_amount = 1.06                   # how far OTM do we scan?
 
 symbol = "MSFT"
-date_delta = 20 
+date_delta = 20
 front_date = get_front_date(date_delta)
-back_date = get_back_date(date_delta) 
+back_date = get_back_date(date_delta)
 
 # ========= check earnings calendar ==========
 date_from = datetime.datetime.strptime(date.today().strftime('%Y-%m-%d') + " 05:00:00",  '%Y-%m-%d %X')
@@ -87,22 +87,24 @@ for symbol in symbols:
         'range': 'OTM',
         'strategy': 'SINGLE',
     }
-    option_chains = TDSession.get_options_chain(option_chain=opt_chain)
+    try:
+        option_chains = TDSession.get_options_chain(option_chain=opt_chain)
+    except:
+        # might be querying the API too quickly. wait and try again
+        print("error getting data from TD")
+        time.sleep(3)
+        option_chains = TDSession.get_options_chain(option_chain=opt_chain)
+
     try:
         quote = option_chains['underlying']['mark']
-        strikes_otm = OTM_amount * quote
     except:
         print("error getting stock quote for", symbol)
-    front_chain = {};
-    back_chain = {};
-    for x in (option_chains['callExpDateMap']):
-        if front_date in x:
-            front_chain = option_chains['callExpDateMap'].get(x)
-        if back_date in x:
-            back_chain= option_chains['callExpDateMap'].get(x)
+        continue
+
     options_chains_list.append(option_chains)
-    print('slep')
+    #print('slep')
     time.sleep(.5)
-    print('resume')
+    #print('resume')
+
 with open('options_chains_list.json', 'w') as f:
     json.dump(options_chains_list, f)

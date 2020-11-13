@@ -10,8 +10,8 @@ from datetime import date
 import pickle
 from config import client_id, redirect_uri
 
-import json 
-import os 
+import json
+import os
 import re
 
 # get s and p 500 symbols
@@ -56,13 +56,14 @@ TDSession.login()
 # ========= scanner parameters ==========
 option_price_threshold = 0.25     # front expiration mark price
 calendar_ratio_threshold = 0.65    # front expiration mark price / back mark price (higher is better)
+golden_ratio = 0.85                # mark options that have really good ratios
 spread_ratio_threshold = 0.7      # front expiration ask-bid / mark  (should be low)
 OTM_amount = 1.06                   # how far OTM do we scan?
 
 symbol = "MSFT"
-date_delta = 20 
+date_delta = 20
 front_date = get_front_date(date_delta)
-back_date = get_back_date(date_delta) 
+back_date = get_back_date(date_delta)
 
 # ========= check earnings calendar ==========
 date_from = datetime.datetime.strptime(date.today().strftime('%Y-%m-%d') + " 05:00:00",  '%Y-%m-%d %X')
@@ -81,7 +82,7 @@ date_range = [
     #]
     #if os.path.isfile('date_range.json'):
         #with open('date_range.json', 'r') as f:
-            #config_json = json.load(f) 
+            #config_json = json.load(f)
         #if config_json == date_range:
             #return
         #else:
@@ -95,11 +96,11 @@ def get_earnings_dates_from_yahoo():
     '''
         get earnings date and ticker from yahoo calendar library
         save as format:
-        [ 
+        [
             {
             ticker: 'string',
             date: 'string',
-            }, 
+            },
             ...
         ]
 
@@ -123,103 +124,98 @@ def get_earnings_dates_from_yahoo():
             json.dump(earnings_list, f)
         with open('date_range.json', 'w') as f:
             json.dump(date_range, f)
-        return earnings_list 
+        return earnings_list
     #print('finished getting earnings date from yahoo')
 
     # ========= load watchlist (saved as csv from TOS) ==========
 #print(symbols)
 
-## file check 
+## file check
 if os.path.isfile('companies_earnings.json') and os.path.isfile('date_range.json'):
     with open('date_range.json', 'r') as f:
         date_range_json = json.load(f)
     if date_range_json == date_range:
         with open('companies_earnings.json', 'r') as f:
             earnings_calendar = json.load(f)
-    else: 
+    else:
         #print('getting new dates')
         earnings_calendar = get_earnings_dates_from_yahoo()
-else: 
+else:
     #print("files don't exist creating new ones")
     earnings_calendar = get_earnings_dates_from_yahoo()
 #print('finished checking')
 # ========= main scanner function ==========
 # oneline: print out full ratio information or only the strikes
 #%%
-def scan_calendar_ratio(symbol, oneline = False):
-    opt_chain = {
-        'symbol': symbol,
-        'contractType': 'CALL',
-        'optionType': 'S',
-        'fromDate': front_date,
-        'toDate': back_date,
-        #'strikeCount': 15,
-        'includeQuotes': True,
-        'range': 'OTM',
-        'strategy': 'SINGLE',
+def scan_calendar_ratio(filename, oneline = False):
+    with open(filename) as f:
+        options_chains_list = json.load(f)
 
-    }
+        for option_chains in options_chains_list:
+            symbol = option_chains['symbol']
 
-    # Get Option Chains
-    option_chains = TDSession.get_options_chain(option_chain=opt_chain)
-    try:
-        quote = option_chains['underlying']['mark']
-        strikes_otm = OTM_amount * quote
-    except:
-        print("error getting stock quote for", symbol)
-        return
-    front_chain = {};
-    back_chain = {};
-    for x in (option_chains['callExpDateMap']):
-        if front_date in x:
-            front_chain = option_chains['callExpDateMap'].get(x)
-        if back_date in x:
-            back_chain= option_chains['callExpDateMap'].get(x)
-    #print(option_chains)
-    #print(front_chain)
-    #print(back_chain)
-
-
-    symbol_printed = False
-
-    bad_spread_count = 0
-    for strike in front_chain:
-        #print(strike)
-        if float(strike) < strikes_otm:
-            continue
-        is_bad_spread = False
-        if strike in back_chain:
-            front_mark = front_chain.get(strike)[0]['mark']
-            if front_mark < option_price_threshold:
-                break
-            if (front_chain.get(strike)[0]['ask'] - front_chain.get(strike)[0]['bid']) / front_mark > spread_ratio_threshold:
-                bad_spread_count = bad_spread_count + 1
-                is_bad_spread = True
-            if bad_spread_count >= 3:
-                break
-            if back_chain.get(strike)[0]['mark'] <= 0:
+            try:
+                quote = option_chains['underlying']['mark']
+                strikes_otm = OTM_amount * quote
+            except:
+                print("error getting stock quote for", symbol)
                 continue
-            ratio = front_mark / back_chain.get(strike)[0]['mark']
-            if ratio > calendar_ratio_threshold:
-                if not is_bad_spread:
-                    if oneline:
-                        if not symbol_printed:
-                            print(symbol,  end=" ")
-                            filtered = next((sub for sub in earnings_calendar if sub['ticker'] == symbol), None) 
-                            if filtered:
-                                re_filter = re.findall('\d\d\d\d\-\d\d-\d\d', filtered['date'])[0]
-                                print(f"/ (ER) date : {re_filter} /", end = " ")
-                            symbol_printed = True
-                        print(strike, end=" ")
-                    else:
-                        print(symbol, strike, front_chain.get(strike)[0]['mark'], back_chain.get(strike)[0]['mark'], ratio, "badspread" if is_bad_spread else "")
-    if oneline and symbol_printed: print(" ")
-print(date_range)
-for symbol in symbols:
-    scan_calendar_ratio(symbol, oneline=True)
-    time.sleep(.6)
 
-#%%
+            front_chain = {};
+            back_chain = {};
+            for x in (option_chains['callExpDateMap']):
+                if front_date in x:
+                    front_chain = option_chains['callExpDateMap'].get(x)
+                if back_date in x:
+                    back_chain= option_chains['callExpDateMap'].get(x)
+            #print(option_chains)
+            #print(front_chain)
+            #print(back_chain)
+
+
+            symbol_printed = False
+
+            bad_spread_count = 0
+            for strike in front_chain:
+                #print(strike)
+                if float(strike) < strikes_otm:
+                    continue
+                is_bad_spread = False
+                if strike in back_chain:
+                    front_mark = front_chain.get(strike)[0]['mark']
+                    if front_mark < option_price_threshold:
+                        break
+                    if (front_chain.get(strike)[0]['ask'] - front_chain.get(strike)[0]['bid']) / front_mark > spread_ratio_threshold:
+                        bad_spread_count = bad_spread_count + 1
+                        is_bad_spread = True
+                    if bad_spread_count >= 3:
+                        break
+                    if back_chain.get(strike)[0]['mark'] <= 0:
+                        continue
+                    ratio = front_mark / back_chain.get(strike)[0]['mark']
+                    if ratio > calendar_ratio_threshold:
+                        if not is_bad_spread:
+                            if oneline:
+                                if not symbol_printed:
+                                    print(symbol,  end=" ")
+                                    filtered = next((sub for sub in earnings_calendar if sub['ticker'] == symbol), None)
+                                    if filtered:
+                                        re_filter = re.findall('\d\d\d\d\-\d\d-\d\d', filtered['date'])[0]
+                                        print(f"/ (ER: {re_filter}) /", end = " ")
+                                    symbol_printed = True
+                                print(strike, end="")
+                                if ratio > golden_ratio:
+                                    print("*", end="")
+                                print("", end=" ")
+                            else:
+                                print(symbol, strike, front_chain.get(strike)[0]['mark'], back_chain.get(strike)[0]['mark'], ratio, "badspread" if is_bad_spread else "")
+            if oneline and symbol_printed: print(" ")
+
+
+print(date_range)
+scan_calendar_ratio('options_chains_list.json', oneline=True)
+
+#%%  should be in separate file
 def get_option_chains():
     options_chains_list = [
 
