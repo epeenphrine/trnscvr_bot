@@ -9,6 +9,26 @@ from datetime import date
 import pickle
 from config import client_id, redirect_uri
 
+def get_front_date(date_delta):
+    dates_list = []
+    for i in range(0, date_delta):
+        d = datetime.date.today()
+        d += datetime.timedelta(i)
+        if d.weekday() == 4:
+            dates_list.append(str(d))
+    print(dates_list[-2])
+    return dates_list[-2]
+
+def get_back_date(date_delta):
+    dates_list = []
+    for i in range(0, date_delta):
+        d = datetime.date.today()
+        d += datetime.timedelta(i)
+        if d.weekday() == 4:
+            dates_list.append(str(d))
+    print(dates_list[-1])
+    return dates_list[-1]
+
 # Create a new session, credentials path is optional.
 TDSession = TDClient(
     client_id= client_id,
@@ -26,8 +46,9 @@ spread_ratio_threshold = 0.7      # front expiration ask-bid / mark  (should be 
 OTM_amount = 1.06                   # how far OTM do we scan?
 
 symbol = "MSFT"
-front_date = '2020-11-06'
-back_date = '2020-11-13'
+date_delta = 20 
+front_date = get_front_date(date_delta)
+back_date = get_back_date(date_delta) 
 watchlist_filename = "./2020-11-04-watchlist.csv"
 
 # ========= check earnings calendar ==========
@@ -52,12 +73,12 @@ except:
     #print(earnings_calendar)
 
     earnings_tickers = [x['ticker'] for x in earnings_calendar]
+    earnings_date= [x['startdatetime'] for x in earnings_calendar]
 
     f = open("earnings_calendar.txt", 'wb')
     pickle.dump([date_to, earnings_tickers], f)
 
-print(earnings_tickers)
-
+#print(earnings_date)
 
 # ========= load watchlist (saved as csv from TOS) ==========
 symbols = []
@@ -66,10 +87,12 @@ with open(watchlist_filename, newline="") as watchlist_file:
     for row in fr:
         if len(row) > 1 and row[0] != "Symbol":
             symbols.append(row[0])
-print(symbols)
+
+#print(symbols)
 
 # ========= main scanner function ==========
 # oneline: print out full ratio information or only the strikes
+#%%
 def scan_calendar_ratio(symbol, oneline = False):
     opt_chain = {
         'symbol': symbol,
@@ -94,13 +117,11 @@ def scan_calendar_ratio(symbol, oneline = False):
         return
     front_chain = {};
     back_chain = {};
-
     for x in (option_chains['callExpDateMap']):
         if front_date in x:
             front_chain = option_chains['callExpDateMap'].get(x)
         if back_date in x:
-            back_chain = option_chains['callExpDateMap'].get(x)
-
+            back_chain= option_chains['callExpDateMap'].get(x)
     #print(option_chains)
     #print(front_chain)
     #print(back_chain)
@@ -110,20 +131,19 @@ def scan_calendar_ratio(symbol, oneline = False):
 
     bad_spread_count = 0
     for strike in front_chain:
+        #print(strike)
         if float(strike) < strikes_otm:
             continue
         is_bad_spread = False
         if strike in back_chain:
             front_mark = front_chain.get(strike)[0]['mark']
             if front_mark < option_price_threshold:
-                time.sleep(0.5)
                 break
             if (front_chain.get(strike)[0]['ask'] - front_chain.get(strike)[0]['bid']) / front_mark > spread_ratio_threshold:
                 bad_spread_count = bad_spread_count + 1
                 is_bad_spread = True
             if bad_spread_count >= 3:
                 break
-
             if back_chain.get(strike)[0]['mark'] <= 0:
                 continue
             ratio = front_mark/ back_chain.get(strike)[0]['mark']
@@ -134,12 +154,12 @@ def scan_calendar_ratio(symbol, oneline = False):
                             print(symbol,  end=" ")
                             if symbol in earnings_tickers:
                                 print("(ER)", end=" ")
+                                print("")
                             symbol_printed = True
                         print(strike, end=" ")
                     else:
                         print(symbol, strike, front_chain.get(strike)[0]['mark'], back_chain.get(strike)[0]['mark'], ratio, "badspread" if is_bad_spread else "")
     if oneline and symbol_printed: print(" ")
-
-
 for symbol in symbols:
     scan_calendar_ratio(symbol, oneline=True)
+    time.sleep(.6)

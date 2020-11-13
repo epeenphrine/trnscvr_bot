@@ -1,1 +1,5 @@
-config.py
+config*
+tokens.py
+testing.py
+.git
+*pycache*
