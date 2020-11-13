@@ -9,8 +9,8 @@ from datetime import date
 import pickle
 from config import client_id, redirect_uri
 
-import json 
-import os 
+import json
+import os
 import re
 
 def get_front_date(date_delta):
@@ -50,9 +50,9 @@ spread_ratio_threshold = 0.7      # front expiration ask-bid / mark  (should be 
 OTM_amount = 1.06                   # how far OTM do we scan?
 
 symbol = "MSFT"
-date_delta = 20 
+date_delta = 20
 front_date = get_front_date(date_delta)
-back_date = get_back_date(date_delta) 
+back_date = get_back_date(date_delta)
 
 # ========= check earnings calendar ==========
 date_from = datetime.datetime.strptime(date.today().strftime('%Y-%m-%d') + " 05:00:00",  '%Y-%m-%d %X')
@@ -74,9 +74,9 @@ options_chains_list = [
 ]
 
 for symbol in symbols:
-    #options_chains_dict = {
-    #}
-    opt_chain = {
+    options_chains_list = {}
+
+    opt_params = {
         'symbol': symbol,
         'contractType': 'CALL',
         'optionType': 'S',
@@ -87,22 +87,31 @@ for symbol in symbols:
         'range': 'OTM',
         'strategy': 'SINGLE',
     }
-    option_chains = TDSession.get_options_chain(option_chain=opt_chain)
+
     try:
-        quote = option_chains['underlying']['mark']
-        strikes_otm = OTM_amount * quote
+        option_chain = TDSession.get_options_chain(option_chain=opt_params)
+        time.sleep(.6)
+    except:
+        # what's the actual error for too many API requests?
+        print("error getting option data from TD")
+        time.sleep(5)
+        option_chain = TDSession.get_options_chain(option_chain=opt_params)
+
+    try:
+        quote = option_chain['underlying']['mark']
     except:
         print("error getting stock quote for", symbol)
+        continue
+
     front_chain = {};
     back_chain = {};
-    for x in (option_chains['callExpDateMap']):
+    for x in (option_chain['callExpDateMap']):
         if front_date in x:
-            front_chain = option_chains['callExpDateMap'].get(x)
+            front_chain = option_chain['callExpDateMap'].get(x)
         if back_date in x:
-            back_chain= option_chains['callExpDateMap'].get(x)
-    options_chains_list.append(option_chains)
-    print('slep')
-    time.sleep(.5)
-    print('resume')
+            back_chain = option_chain['callExpDateMap'].get(x)
+
+    options_chains_list[symbol] = {"quote": quote, "front_chain": front_chain, "back_chain", back_chain}
+
 with open('options_chains_list.json', 'w') as f:
     json.dump(options_chains_list, f)
