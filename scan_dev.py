@@ -214,6 +214,46 @@ def scan_calendar_ratio(symbol, oneline = False):
                     else:
                         print(symbol, strike, front_chain.get(strike)[0]['mark'], back_chain.get(strike)[0]['mark'], ratio, "badspread" if is_bad_spread else "")
     if oneline and symbol_printed: print(" ")
+print(date_range)
 for symbol in symbols:
     scan_calendar_ratio(symbol, oneline=True)
     time.sleep(.6)
+
+#%%
+def get_option_chains():
+    options_chains_list = [
+
+    ]
+    for symbol in symbols:
+        #options_chains_dict = {
+        #}
+        opt_chain = {
+            'symbol': symbol,
+            'contractType': 'CALL',
+            'optionType': 'S',
+            'fromDate': front_date,
+            'toDate': back_date,
+            #'strikeCount': 15,
+            'includeQuotes': True,
+            'range': 'OTM',
+            'strategy': 'SINGLE',
+        }
+        option_chains = TDSession.get_options_chain(option_chain=opt_chain)
+        try:
+            quote = option_chains['underlying']['mark']
+            strikes_otm = OTM_amount * quote
+        except:
+            print("error getting stock quote for", symbol)
+        front_chain = {};
+        back_chain = {};
+        for x in (option_chains['callExpDateMap']):
+            if front_date in x:
+                front_chain = option_chains['callExpDateMap'].get(x)
+            if back_date in x:
+                back_chain= option_chains['callExpDateMap'].get(x)
+        options_chains_list.append(option_chains)
+        print('slep')
+        time.sleep(.5)
+        print('resume')
+    with open('options_chains_list.json', 'w') as f:
+        json.dump(options_chains_list, f)
