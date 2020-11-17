@@ -144,14 +144,17 @@ else:
     #print("files don't exist creating new ones")
     earnings_calendar = get_earnings_dates_from_yahoo()
 #print('finished checking')
+
 # ========= main scanner function ==========
 # oneline: print out full ratio information or only the strikes
 #%%
 def scan_calendar_ratio(filename, oneline = False):
     with open(filename) as f:
         options_chains_list = json.load(f)
+        output_list = []
 
         for option_chains in options_chains_list:
+            output_string = ""
             symbol = option_chains['symbol']
 
             try:
@@ -196,20 +199,26 @@ def scan_calendar_ratio(filename, oneline = False):
                     if ratio > calendar_ratio_threshold:
                         if not is_bad_spread:
                             if oneline:
+                                # print all the strikes for each symbol in one line
                                 if not symbol_printed:
-                                    print(symbol,  end=" ")
+                                    output_string += (symbol + " ")
                                     filtered = next((sub for sub in earnings_calendar if sub['ticker'] == symbol), None)
                                     if filtered:
                                         re_filter = re.findall('\d\d\d\d\-\d\d-\d\d', filtered['date'])[0]
-                                        print(f"/ (ER: {re_filter}) /", end = " ")
+                                        output_string += (f"/ (ER: {re_filter}) /" + " ")
                                     symbol_printed = True
-                                print(strike, end="")
+                                output_string += strike
                                 if ratio > golden_ratio:
-                                    print("*", end="")
-                                print("", end=" ")
+                                    output_string += ("*")
+                                output_string += (" ")
                             else:
-                                print(symbol, strike, front_chain.get(strike)[0]['mark'], back_chain.get(strike)[0]['mark'], ratio, "badspread" if is_bad_spread else "")
-            if oneline and symbol_printed: print(" ")
+                                # print a separte line for each option strike
+                                output_string += (symbol, strike, front_chain.get(strike)[0]['mark'], back_chain.get(strike)[0]['mark'], ratio, "badspread" if is_bad_spread else "")
+                                output_list.append(output_string)
+                                output_string = ""
+            if oneline and symbol_printed:
+                output_list.append(output_string)
+    return output_list
 
 
 print(date_range)
