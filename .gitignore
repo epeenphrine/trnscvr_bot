@@ -1,5 +1,7 @@
 config*
+tokens*
+*pycache*
+*Pipfile*
 tokens.py
 testing.py
 .git
-*pycache*

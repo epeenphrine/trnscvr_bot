@@ -163,7 +163,6 @@ def scan_calendar_ratio(filename, oneline = False):
             except:
                 print("error getting stock quote for", symbol)
                 continue
-
             front_chain = {};
             back_chain = {};
             for x in (option_chains['callExpDateMap']):
@@ -218,6 +217,9 @@ def scan_calendar_ratio(filename, oneline = False):
                                 output_string = ""
             if oneline and symbol_printed:
                 output_list.append(output_string)
+    with open('companies_filtered.json', 'w') as f:
+        json.dump(output_list, f)
+    print(output_list)
     return output_list
 
 

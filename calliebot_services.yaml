@@ -1,0 +1,32 @@
+version: "3"
+services:
+## production build
+  #calliebot_scan:
+    #container_name: calliebot_scan
+    #image: 'calliebot_scan'
+    #build:
+      #context: .
+      #dockerfile: calliebot_scan.Dockerfile 
+    #volumes:
+    #- /mnt/raid-0/docker/python/calliebot:/app
+    #restart: unless-stopped 
+    #logging:
+        #driver: "json-file"
+        #options:
+            #max-size: "200k"
+            #max-file: "10"
+
+  calliebot_discord:
+    container_name: calliebot_discord
+    image: 'calliebot_discord'
+    build:
+      context: .
+      dockerfile: calliebot_discord.Dockerfile
+    volumes:
+    - /mnt/raid-0/docker/python/trnscvr_bot/:/app
+    restart: unless-stopped 
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "200k"
+            max-file: "10"

@@ -89,10 +89,11 @@ for symbol in symbols:
     }
     try:
         option_chains = TDSession.get_options_chain(option_chain=opt_chain)
+        time.sleep(.5)
     except:
         # might be querying the API too quickly. wait and try again
-        print("error getting data from TD")
-        time.sleep(3)
+        print("error getting data from TD retrying ...")
+        time.sleep(7) # compeletely reset per second rule from TDA 
         option_chains = TDSession.get_options_chain(option_chain=opt_chain)
 
     try:
@@ -100,11 +101,13 @@ for symbol in symbols:
     except:
         print("error getting stock quote for", symbol)
         continue
-
+    print(option_chains)
     options_chains_list.append(option_chains)
     #print('slep')
-    time.sleep(.5)
     #print('resume')
 
 with open('options_chains_list.json', 'w') as f:
     json.dump(options_chains_list, f)
+with open('scan_time.json', 'w') as f:
+    d = str(datetime.now())
+    json.dump(d, f)
