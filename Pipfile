@@ -27,6 +27,7 @@ urllib3 = "==1.25.11"
 websockets = "==8.1"
 Werkzeug = "==1.0.1"
 yahoo-earnings-calendar = "==0.6.0"
+pytz = "*"
 
 [dev-packages]
 

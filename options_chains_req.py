@@ -2,6 +2,7 @@
 # Import the client
 from td.client import TDClient
 import datetime
+from pytz import timezone
 import time
 from yahoo_earnings_calendar import YahooEarningsCalendar
 import csv
@@ -108,6 +109,8 @@ for symbol in symbols:
 
 with open('options_chains_list.json', 'w') as f:
     json.dump(options_chains_list, f)
+
 with open('scan_time.json', 'w') as f:
-    d = str(datetime.now())
+    tz = timezone('EST')
+    d = str(datetime.datetime.now(tz)) 
     json.dump(d, f)
